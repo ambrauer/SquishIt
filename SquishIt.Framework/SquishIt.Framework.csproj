@@ -51,6 +51,12 @@
     <WarningLevel>4</WarningLevel>
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
+  <PropertyGroup>
+    <SignAssembly>false</SignAssembly>
+  </PropertyGroup>
+  <PropertyGroup>
+    <AssemblyOriginatorKeyFile>asdf.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="AjaxMin">
       <HintPath>..\tools\microsoft-ajax-minifer\AjaxMin.dll</HintPath>
@@ -102,10 +108,11 @@
     <Compile Include="FileResolvers\IFileResolver.cs" />
     <Compile Include="Files\CurrentDirectoryWrapper.cs" />
     <Compile Include="Files\ICurrentDirectoryWrapper.cs" />
-    <Compile Include="Files\InputFile.cs" />
     <Compile Include="Css\ICssBundleBuilder.cs" />
     <Compile Include="Css\ICssBundle.cs" />
-    <Compile Include="JavaScript\BundleCache.cs" />
+    <Compile Include="Files\InputFile.cs" />
+    <Compile Include="IBundle.cs" />
+    <Compile Include="Utilities\BundleCache.cs" />
     <Compile Include="JavaScript\IJavaScriptBundle.cs" />
     <Compile Include="JavaScript\IJavaScriptBundleBuilder.cs" />
     <Compile Include="JavaScript\JavaScriptBundle.cs" />
@@ -141,6 +148,7 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
+    <None Include="asdf.snk" />
     <None Include="closure-compiler\COPYING">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

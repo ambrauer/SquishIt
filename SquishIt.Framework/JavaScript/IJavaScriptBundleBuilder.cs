@@ -10,11 +10,12 @@ namespace SquishIt.Framework.JavaScript
         IJavaScriptBundleBuilder WithMinifier(JavaScriptMinifiers javaScriptMinifier);
         IJavaScriptBundleBuilder WithMinifier(IJavaScriptMinifier javaScriptMinifier);
         IJavaScriptBundleBuilder RenderOnlyIfOutputFileMissing();
-        string Render(string renderTo);
-        void AsNamed(string name, string renderTo);
+        string RenderFile(string renderTo);
+        string RenderCache(string renderTo);
+        void AsNamedFile(string name, string renderTo);
+        void AsNamedCache(string name, string renderTo);
         IJavaScriptBundleBuilder ForceDebug();
         IJavaScriptBundleBuilder ForceRelease();
         IJavaScriptBundleBuilder WithAttribute(string name, string value);
-        string AsCached(string name, string cssPath);
     }
 }

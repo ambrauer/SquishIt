@@ -14,72 +14,39 @@ namespace SquishIt.Framework.Css
 {
     internal class CssBundle : BundleBase, ICssBundle, ICssBundleBuilder
     {
-        private static BundleCache bundleCache = new BundleCache();
-        private static Dictionary<string, string> debugCssFiles = new Dictionary<string, string>();
-        private static Dictionary<string, NamedState> namedState = new Dictionary<string, NamedState>();
-        private List<string> cssFiles = new List<string>();
-        private List<string> remoteCssFiles = new List<string>();
-        private List<string> embeddedResourceCssFiles = new List<string>();
-        private List<string> dependentFiles = new List<string>();
-        private ICssCompressor cssCompressorInstance = new MsCompressor();
-        private bool renderOnlyIfOutputFileMissing = false;
-        private bool processImports = false;
-        private const string CssTemplate = "<link rel=\"stylesheet\" type=\"text/css\" {0}href=\"{1}\" />";
-        private static readonly Regex importPattern = new Regex(@"@import +url\(([""']){0,1}(.*?)\1{0,1}\);", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        private string cachePrefix = "css";
-
+        private List<string> _dependentFiles = new List<string>();
+        private ICssCompressor _cssCompressorInstance = new MsCompressor();
+        private bool _processImports = false;
+        private static readonly Regex ImportPattern = new Regex(@"@import +url\(([""']){0,1}(.*?)\1{0,1}\);", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        
         public CssBundle()
-            : base(new FileWriterFactory(), new FileReaderFactory(), new DebugStatusReader(), new CurrentDirectoryWrapper())
-        {
-        }
+            : this(new DebugStatusReader(), new FileWriterFactory(), new FileReaderFactory(), new CurrentDirectoryWrapper()) { }
 
         public CssBundle(IDebugStatusReader debugStatusReader, IFileWriterFactory fileWriterFactory, IFileReaderFactory fileReaderFactory, ICurrentDirectoryWrapper currentDirectoryWrapper)
-            : base(fileWriterFactory, fileReaderFactory, debugStatusReader, currentDirectoryWrapper)
+            : base(fileWriterFactory, fileReaderFactory, debugStatusReader, currentDirectoryWrapper, "css", "<link rel=\"stylesheet\" type=\"text/css\" {0}href=\"{1}\" />", "~/bundle/style/") { }
+
+        ICssBundleBuilder ICssBundle.Add(string path)
         {
+            Add(path);
+            return this;
         }
 
-        ICssBundleBuilder ICssBundleBuilder.Add(string cssScriptPath)
+        ICssBundleBuilder ICssBundleBuilder.Add(string path)
         {
-            cssFiles.Add(cssScriptPath);
+            Add(path);
             return this;
         }
 
         ICssBundleBuilder ICssBundle.AddRemote(string localPath, string remotePath)
         {
-            if (debugStatusReader.IsDebuggingEnabled())
-            {
-                cssFiles.Add(localPath);
-            }
-            else
-            {
-                remoteCssFiles.Add(remotePath);
-            }
+            AddRemote(localPath, remotePath);
             return this;
         }
 
-        ICssBundleBuilder ICssBundleBuilder.AddRemote(string javaScriptPath, string cdnUri)
+        ICssBundleBuilder ICssBundleBuilder.AddRemote(string localPath, string remotePath)
         {
-            if (debugStatusReader.IsDebuggingEnabled())
-            {
-                cssFiles.Add(javaScriptPath);
-            }
-            else
-            {
-                remoteCssFiles.Add(cdnUri);
-            }
+            AddRemote(localPath, remotePath);
             return this;
-        }
-
-        void AddEmbeddedResource(string localPath, string embeddedResourcePath)
-        {
-            if (debugStatusReader.IsDebuggingEnabled())
-            {
-                cssFiles.Add(localPath);
-            }
-            else
-            {
-                embeddedResourceCssFiles.Add(embeddedResourcePath);
-            }
         }
 
         ICssBundleBuilder ICssBundle.AddEmbeddedResource(string localPath, string embeddedResourcePath)
@@ -94,177 +61,163 @@ namespace SquishIt.Framework.Css
             return this;
         }
 
-        ICssBundleBuilder ICssBundle.Add(string cssScriptPath)
-        {
-            cssFiles.Add(cssScriptPath);
-            return this;
-        }
-
         ICssBundleBuilder ICssBundleBuilder.WithMedia(string media)
         {
-            return WithAttribute("media", media);
-        }
-
-        public ICssBundleBuilder WithAttribute(string name, string value)
-        {
-            if (attributes.ContainsKey(name))
-            {
-                attributes[name] = value;
-            }
-            else
-            {
-                attributes.Add(name, value);
-            }
+            WithAttribute("media", media);
             return this;
         }
 
-        public ICssBundleBuilder WithCompressor(CssCompressors cssCompressor)
+        ICssBundleBuilder ICssBundleBuilder.WithAttribute(string name, string value)
         {
-            
-            this.cssCompressorInstance = MapCompressorEnumToType(cssCompressor);
+            WithAttribute(name, value);
             return this;
         }
 
-        public ICssBundleBuilder WithCompressor(ICssCompressor cssCompressor)
+        ICssBundleBuilder ICssBundleBuilder.RenderOnlyIfOutputFileMissing()
         {
-            this.cssCompressorInstance = cssCompressor;
+            RenderOnlyIfOutputFileMissing = true;
             return this;
         }
 
-        void ICssBundleBuilder.AsNamed(string name, string renderTo)
+        void ICssBundleBuilder.AsNamedFile(string name, string renderTo)
         {
-            namedState[name] = new NamedState(debugStatusReader.IsDebuggingEnabled(), renderTo);
-            Render(renderTo, name);
+            AsNamed(name, renderTo, new FileRenderer(FileWriterFactory));
         }
 
-        public ICssBundleBuilder RenderOnlyIfOutputFileMissing()
+        void ICssBundleBuilder.AsNamedCache(string name, string renderTo)
         {
-            renderOnlyIfOutputFileMissing = true;
+            var routedPath = String.Concat(CacheRoute, renderTo);
+            AsNamed(name, routedPath, new CacheRenderer(CachePrefix, renderTo));
+        }
+
+        ICssBundleBuilder ICssBundleBuilder.ForceDebug()
+        {
+            ForceDebug();
             return this;
         }
 
-        public ICssBundleBuilder ProcessImports()
+        ICssBundleBuilder ICssBundleBuilder.ForceRelease()
         {
-            processImports = true;
-            return this;
-        }
-
-        public ICssBundleBuilder ForceDebug()
-        {
-            debugStatusReader.ForceDebug();
-            return this;
-        }
-
-        public ICssBundleBuilder ForceRelease()
-        {
-            debugStatusReader.ForceRelease();
+            ForceRelease();
             return this;
         }
 
         string ICssBundle.RenderNamed(string name)
         {
-            NamedState state = namedState[name];
-            if (state.Debug)
-            {
-                return debugCssFiles[name];
-            }
-            return RenderRelease(name, state.RenderTo, new FileRenderer(fileWriterFactory));
+            return RenderNamed(name);
         }
 
-        string ICssBundleBuilder.Render(string renderTo)
+        string ICssBundleBuilder.RenderFile(string renderTo)
         {
-            return Render(renderTo, renderTo);
+            return Render(renderTo, renderTo, new FileRenderer(FileWriterFactory));
         }
 
-        private string Render(string renderTo, string key)
+        string ICssBundleBuilder.RenderCache(string renderTo)
         {
-            if (debugStatusReader.IsDebuggingEnabled())
-            {
-                string result = RenderDebugCss();
-                debugCssFiles[key] = result;
-                return result;
-            }
-            return RenderRelease(key, renderTo, new FileRenderer(fileWriterFactory));
+            var routedPath = String.Concat(CacheRoute, renderTo);
+            return Render(renderTo, routedPath, new CacheRenderer(CachePrefix, renderTo));
         }
 
-        public string AsCached(string name, string cssPath)
+        public ICssBundleBuilder WithCompressor(CssCompressors cssCompressor)
         {
-            if (debugStatusReader.IsDebuggingEnabled())
-            {
-                string result = RenderDebugCss();
-                debugCssFiles[name] = result;
-                return result;
-            }
-            return RenderRelease(name, cssPath, new CacheRenderer(cachePrefix, name));
+            _cssCompressorInstance = MapCompressorEnumToType(cssCompressor);
+            return this;
         }
 
-        private string RenderRelease(string key, string renderTo, IRenderer renderer)
+        public ICssBundleBuilder WithCompressor(ICssCompressor cssCompressor)
         {
-            if (!bundleCache.ContainsKey(key))
+            _cssCompressorInstance = cssCompressor;
+            return this;
+        }
+
+        public ICssBundleBuilder ProcessImports()
+        {
+            _processImports = true;
+            return this;
+        }
+
+        protected override string GenerateDebug()
+        {
+           string modifiedCssTemplate = FillTemplate("{0}");
+            var processedCssFiles = new List<string>();
+            foreach (string file in LocalFiles)
             {
-                lock (bundleCache)
+                if (file.ToLower().EndsWith(".less") || file.ToLower().EndsWith(".less.css"))
                 {
-                    if (!bundleCache.ContainsKey(key))
+                    string outputFile = ResolveAppRelativePathToFileSystem(file);
+                    string css = ProcessLess(outputFile);
+                    outputFile += ".debug.css";
+                    using (var fileWriter = FileWriterFactory.GetFileWriter(outputFile))
                     {
-                        string compressedCss;
-                        string hash= null;
-                        bool hashInFileName = false;
-
-                        dependentFiles.Clear();
-
-                        string outputFile = ResolveAppRelativePathToFileSystem(renderTo);
-
-                        List<string> files = GetFiles(GetFilePaths(cssFiles));
-                        files.AddRange(GetFiles(GetEmbeddedResourcePaths(embeddedResourceCssFiles)));
-                        dependentFiles.AddRange(files);
-
-                        if (renderTo.Contains("#"))
-                        {
-                            hashInFileName = true;
-                            compressedCss = CompressCss(outputFile, files, cssCompressorInstance);
-                            hash = Hasher.Create(compressedCss);
-                            renderTo = renderTo.Replace("#", hash);
-                            outputFile = outputFile.Replace("#", hash);
-                        }
-
-                        if (renderOnlyIfOutputFileMissing && FileExists(outputFile))
-                        {
-                            compressedCss = ReadFile(outputFile);
-                        }
-                        else
-                        {
-                            compressedCss = CompressCss(outputFile, files, cssCompressorInstance);
-                            renderer.Render(compressedCss, outputFile);
-                        }
-                        
-                        if (hash == null)
-                        {
-                            hash = Hasher.Create(compressedCss);
-                        }
-
-                        string renderedCssTag;
-                        if (hashInFileName)
-                        {
-                            renderedCssTag = FillTemplate(ExpandAppRelativePath(renderTo));
-                        }
-                        else
-                        {
-                            string path = ExpandAppRelativePath(renderTo);
-                            if (path.Contains("?"))
-                            {
-                                renderedCssTag = FillTemplate(path + "&r=" + hash);
-                            }
-                            else
-                            {
-                                renderedCssTag = FillTemplate(path + "?r=" + hash);
-                            }
-                        }
-                        renderedCssTag = String.Concat(GetFilesForRemote(), renderedCssTag);
-                        bundleCache.AddToCache(key, renderedCssTag, dependentFiles);
+                        fileWriter.Write(css);
                     }
+                    processedCssFiles.Add(file + ".debug.css");
+                }
+                else
+                {
+                    processedCssFiles.Add(file);
                 }
             }
-            return bundleCache.GetContent(key);
+
+            return RenderFiles(modifiedCssTemplate, processedCssFiles);
+        }
+
+        protected override string GenerateRelease(string renderTo, IRenderer renderer, out IList<string> dependentFiles)
+        {
+            string compressedCss;
+            string hash= null;
+            bool hashInFileName = false;
+
+            _dependentFiles.Clear();
+
+            string outputFile = ResolveAppRelativePathToFileSystem(renderTo);
+
+            List<string> files = GetFiles();
+            _dependentFiles.AddRange(files);
+
+            if (renderTo.Contains("#"))
+            {
+                hashInFileName = true;
+                compressedCss = CompressCss(outputFile, files, _cssCompressorInstance);
+                hash = Hasher.Create(compressedCss);
+                renderTo = renderTo.Replace("#", hash);
+                outputFile = outputFile.Replace("#", hash);
+            }
+
+            if (RenderOnlyIfOutputFileMissing && FileExists(outputFile))
+            {
+                compressedCss = ReadFile(outputFile);
+            }
+            else
+            {
+                compressedCss = CompressCss(outputFile, files, _cssCompressorInstance);
+                renderer.Render(compressedCss, outputFile);
+            }
+                        
+            if (hash == null)
+            {
+                hash = Hasher.Create(compressedCss);
+            }
+
+            string renderedCssTag;
+            if (hashInFileName)
+            {
+                renderedCssTag = FillTemplate(ExpandAppRelativePath(renderTo));
+            }
+            else
+            {
+                string path = ExpandAppRelativePath(renderTo);
+                if (path.Contains("?"))
+                {
+                    renderedCssTag = FillTemplate(path + "&r=" + hash);
+                }
+                else
+                {
+                    renderedCssTag = FillTemplate(path + "?r=" + hash);
+                }
+            }
+            dependentFiles = _dependentFiles;
+            return String.Concat(GetFilesForRemote(), renderedCssTag);
         }
 
         private ICssCompressor MapCompressorEnumToType(CssCompressors compressors)
@@ -289,46 +242,7 @@ namespace SquishIt.Framework.Css
             return CssCompressorRegistry.Get(compressor);
         }
 
-        private string RenderDebugCss()
-        {
-            string modifiedCssTemplate = FillTemplate("{0}");
-            var processedCssFiles = new List<string>();
-            foreach (string file in cssFiles)
-            {
-                if (file.ToLower().EndsWith(".less") || file.ToLower().EndsWith(".less.css"))
-                {
-                    string outputFile = ResolveAppRelativePathToFileSystem(file);
-                    string css = ProcessLess(outputFile);
-                    outputFile += ".debug.css";
-                    using (var fileWriter = fileWriterFactory.GetFileWriter(outputFile))
-                    {
-                        fileWriter.Write(css);
-                    }
-                    processedCssFiles.Add(file + ".debug.css");
-                }
-                else
-                {
-                    processedCssFiles.Add(file);
-                }
-            }
-
-            return RenderFiles(modifiedCssTemplate, processedCssFiles);
-        }
-
-        public void ClearCache()
-        {
-            bundleCache.ClearTestingCache();
-            debugCssFiles.Clear();
-            namedState.Clear();
-        }
-
-        public string RenderCached(string name)
-        {
-            var cacheRenderer = new CacheRenderer(cachePrefix, name);
-            return cacheRenderer.Get(name);
-        }
-
-        private string CompressCss(string outputFilePath, List<string> files, ICssCompressor compressor)
+        private string CompressCss(string outputFilePath, IEnumerable<string> files, ICssCompressor compressor)
         {
             var outputCss = new StringBuilder();
             foreach (string file in files)
@@ -343,7 +257,7 @@ namespace SquishIt.Framework.Css
                     css = ReadFile(file);
                 }
                 
-                if (processImports)
+                if (_processImports)
                 {
                     css = ProcessImport(css);
                 }
@@ -357,7 +271,7 @@ namespace SquishIt.Framework.Css
         {
             try
             {
-                currentDirectoryWrapper.SetCurrentDirectory(Path.GetDirectoryName(file));
+                CurrentDirectoryWrapper.SetCurrentDirectory(Path.GetDirectoryName(file));
                 var content = ReadFile(file);
                 var engineFactory = new EngineFactory();
                 var engine = engineFactory.GetEngine();
@@ -365,35 +279,21 @@ namespace SquishIt.Framework.Css
             }
             finally
             {
-                currentDirectoryWrapper.Revert();
+                CurrentDirectoryWrapper.Revert();
             }
         }
 
         private string ProcessImport(string css)
         {
-            return importPattern.Replace(css, new MatchEvaluator(ApplyFileContentsToMatchedImport));
+            return ImportPattern.Replace(css, new MatchEvaluator(ApplyFileContentsToMatchedImport));
         }
 
         private string ApplyFileContentsToMatchedImport(Match match)
         {
             var file = ResolveAppRelativePathToFileSystem(match.Groups[2].Value);
-            dependentFiles.Add(file);
+            _dependentFiles.Add(file);
             return ReadFile(file);
         }
-
-        private string GetFilesForRemote()
-        {
-            var renderedCssFilesForCdn = new StringBuilder();
-            foreach (var uri in remoteCssFiles)
-            {
-                renderedCssFilesForCdn.Append(FillTemplate(uri));
-            }
-            return renderedCssFilesForCdn.ToString();
-        }
-
-        private string FillTemplate(string path)
-        {
-            return String.Format(CssTemplate, GetAdditionalAttributes(), path);
-        }
+        
     }
 }

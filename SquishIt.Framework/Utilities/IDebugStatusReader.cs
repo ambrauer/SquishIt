@@ -5,5 +5,6 @@ namespace SquishIt.Framework.Utilities
         bool IsDebuggingEnabled();
         void ForceDebug();
         void ForceRelease();
+        bool IsForced();
     }
 }

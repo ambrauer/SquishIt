@@ -1,9 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Web;
 using System.Web.Caching;
 
-namespace SquishIt.Framework.JavaScript
+namespace SquishIt.Framework.Utilities
 {
     public class BundleCache
     {
@@ -32,7 +33,7 @@ namespace SquishIt.Framework.JavaScript
             return cache.ContainsKey(key);
         }
 
-        public void AddToCache(string key, string content, List<string> files)
+        public void AddToCache(string key, string content, IList<string> files)
         {
             if (HttpContext.Current != null)
             {

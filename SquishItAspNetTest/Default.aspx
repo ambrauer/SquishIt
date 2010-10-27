@@ -21,11 +21,12 @@
                 //.WithMinifier(JavaScriptMinifiers.Closure)
                 //.ForceRelease()
                 //.ForceDebug()
-                .Render("~/js/combined_#.js") %>
+                .RenderFile("~/js/combined_#.js") %>
                 <%
                     Bundle.JavaScript()
                         .Add("~/js/Menu.js")
-                        .AsNamed(Constants.JavaScript.MenuItems, "~/js/menu_#.js"); %>
+                        .ForceRelease()
+                        .AsNamedFile(Constants.JavaScript.MenuItems, "~/js/menu_#.js"); %>
                                 
     <%= Bundle.Css()
                 .AddRemote("~/css/jquery-ui-1.8rc3.css", "http://ajax.googleapis.com/ajax/libs/jquery/jquery-ui-1.8rc3.css")
@@ -35,25 +36,25 @@
                 .Add("~/css/testdotless.css.less")
                 .WithMedia("screen")
                 .ForceRelease()
-                .Render("~/css/combined_#.css") %>
+                .RenderFile("~/css/combined_#.css") %>
                 
     <%= Bundle.Css()
                 .Add("~/css/extra/extra.css")
                 .WithMedia("screen")
                 .ForceRelease()
-                .Render("~/combined_#.css") %>
+                .RenderFile("~/combined_#.css") %>
      <%= Bundle.Css()
                 .Add("~/css/extra/extra.css")
                 .Add("~/css/import.css")
                 .Add("~/css/CodeThinked.css")
                 .WithMedia("screen")
                 .ForceRelease()
-                .Render("~/css/combinedimport_#.css") %>
+                .RenderFile("~/css/combinedimport_#.css") %>
     <%= Bundle.Css()
                 .Add("~/css/import.css")
                 .WithMedia("screen")
                 .ForceRelease()
-                .Render("~/combinedimport_#.css") %>     
+                .RenderCache("combinedimport_#.css") %>     
     <form id="form1" runat="server">
     <div>
     

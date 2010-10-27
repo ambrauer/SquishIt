@@ -1,28 +1,25 @@
+using System;
 using SquishIt.Framework.Utilities;
 
 namespace SquishIt.Tests.Stubs
 {
     public class StubDebugStatusReader: IDebugStatusReader
     {
-        private bool isDebuggingEnabled;
+        private bool? isDebuggingEnabled;
 
-        public StubDebugStatusReader()
-        {
-            isDebuggingEnabled = true;
-        }
+        public StubDebugStatusReader(){}
 
         public StubDebugStatusReader(bool isDebuggingEnabled)
         {
             this.isDebuggingEnabled = isDebuggingEnabled;
         }
 
-        public bool IsDebuggingEnabled()
-        {
-            return isDebuggingEnabled;
-        }
-
         #region IDebugStatusReader Members
 
+        public bool IsDebuggingEnabled()
+        {
+            return isDebuggingEnabled ?? true;
+        }
 
         public void ForceDebug()
         {
@@ -32,6 +29,11 @@ namespace SquishIt.Tests.Stubs
         public void ForceRelease()
         {
             isDebuggingEnabled = false;
+        }
+
+        public bool IsForced()
+        {
+            return isDebuggingEnabled.HasValue;
         }
 
         #endregion

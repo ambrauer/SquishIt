@@ -9,6 +9,7 @@ namespace SquishIt.Framework.Utilities
     {
         private bool forceDebug = false;
         private bool forceRelease = false;
+        private const string DEBUG_MODE_PARAM = "DebugMode";
 
         public bool IsDebuggingEnabled()
         {
@@ -21,7 +22,18 @@ namespace SquishIt.Framework.Utilities
             {
                 return false;
             }
-            
+
+            if (HttpContext.Current != null && HttpContext.Current.Request.QueryString.HasKeys())
+            {
+                var debugMode = HttpContext.Current.Request.QueryString[DEBUG_MODE_PARAM];
+                if (debugMode != null)
+                {
+                    bool isDebug;
+                    Boolean.TryParse(debugMode, out isDebug);
+                    return isDebug;
+                }
+            }
+
             if (HttpContext.Current != null && HttpContext.Current.IsDebuggingEnabled)
             {                
                 //check retail setting in machine.config
@@ -52,6 +64,11 @@ namespace SquishIt.Framework.Utilities
         public void ForceRelease()
         {
             forceRelease = true;
+        }
+
+        public bool IsForced()
+        {
+            return forceRelease || forceDebug;
         }
 
         #endregion

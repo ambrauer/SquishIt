@@ -8,15 +8,21 @@ namespace SquishIt.Framework.Utilities
 {
     public class BundleCache
     {
+        private string _prefix;
         private static Dictionary<string, string> cache = new Dictionary<string, string>();
+
+        public BundleCache(string prefix)
+        {
+            _prefix = prefix;
+        }
 
         public string GetContent(string name)
         {
             if (HttpContext.Current != null)
             {
-                return (string)HttpContext.Current.Cache["squishit_" + name];
+                return (string)HttpContext.Current.Cache["squishit_" + _prefix + "_" + name];
             }
-            return cache[name];
+            return cache[_prefix + "_" + name];
         }
 
         public void ClearTestingCache()
@@ -28,16 +34,16 @@ namespace SquishIt.Framework.Utilities
         {
             if (HttpContext.Current != null)
             {
-                return HttpContext.Current.Cache["squishit_" + key] != null;
+                return HttpContext.Current.Cache["squishit_" + _prefix + "_" + key] != null;
             }
-            return cache.ContainsKey(key);
+            return cache.ContainsKey(_prefix + "_" + key);
         }
 
         public void AddToCache(string key, string content, IList<string> files)
         {
             if (HttpContext.Current != null)
             {
-                HttpContext.Current.Cache.Add("squishit_" + key, content, new CacheDependency(files.ToArray()),
+                HttpContext.Current.Cache.Add("squishit_" + _prefix + "_" + key, content, new CacheDependency(files.ToArray()),
                                                 Cache.NoAbsoluteExpiration, 
                                                 new TimeSpan(365, 0, 0, 0),
                                                 CacheItemPriority.NotRemovable,
@@ -45,7 +51,7 @@ namespace SquishIt.Framework.Utilities
             }
             else
             {
-                cache.Add(key, content);    
+                cache.Add(_prefix + "_" + key, content);    
             }
         }
     }

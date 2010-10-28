@@ -55,7 +55,8 @@
     <SignAssembly>false</SignAssembly>
   </PropertyGroup>
   <PropertyGroup>
-    <AssemblyOriginatorKeyFile>asdf.snk</AssemblyOriginatorKeyFile>
+    <AssemblyOriginatorKeyFile>
+    </AssemblyOriginatorKeyFile>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="AjaxMin">
@@ -148,7 +149,6 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
-    <None Include="asdf.snk" />
     <None Include="closure-compiler\COPYING">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

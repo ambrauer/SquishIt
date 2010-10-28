@@ -5,7 +5,6 @@ using System.Text;
 using System.Web;
 using SquishIt.Framework.FileResolvers;
 using SquishIt.Framework.Files;
-using SquishIt.Framework.JavaScript;
 using SquishIt.Framework.Renderers;
 using SquishIt.Framework.Utilities;
 
@@ -18,7 +17,7 @@ namespace SquishIt.Framework
         protected IDebugStatusReader DebugStatusReader { get; private set; }
         protected ICurrentDirectoryWrapper CurrentDirectoryWrapper { get; private set; }
 
-        private static BundleCache _bundleCache = new BundleCache();
+        private static BundleCache _bundleCache;
         private static Dictionary<string, string> _debugFiles = new Dictionary<string, string>();
         private static Dictionary<string, NamedState> _namedState = new Dictionary<string, NamedState>();
 
@@ -45,6 +44,7 @@ namespace SquishIt.Framework
             TagTemplate = tagTemplate;
             CacheRoute = cacheRoute;
             RenderOnlyIfOutputFileMissing = false;
+            _bundleCache = new BundleCache(cachePrefix);
         }
 
         #region File Helpers (protected)

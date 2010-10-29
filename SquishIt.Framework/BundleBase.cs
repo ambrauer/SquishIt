@@ -190,10 +190,12 @@ namespace SquishIt.Framework
 
         protected void AsNamed(string name, string renderTo, IRenderer renderer)
         {
-            _namedState[name] = new NamedState(DebugStatusReader.IsForced() ? DebugStatusReader.IsDebuggingEnabled() : (bool?)null, renderTo);
+            string key = CachePrefix + "_" + name;
+
+            _namedState[key] = new NamedState(DebugStatusReader.IsForced() ? DebugStatusReader.IsDebuggingEnabled() : (bool?)null, renderTo);
             // Need to prime both debug and release so both are available for real-time debugging (?debugMode=true)
-            RenderDebug(name);
-            RenderRelease(name, renderTo, renderer);
+            RenderDebug(key);
+            RenderRelease(key, renderTo, renderer);
         }
 
         protected void ForceDebug()
@@ -208,13 +210,15 @@ namespace SquishIt.Framework
 
         protected string RenderNamed(string name)
         {
-            NamedState state = _namedState[name];
+            string key = CachePrefix + "_" + name;
+
+            NamedState state = _namedState[key];
             if (state.Debug.HasValue)
             {
                 // If forced when creating the bundle, then use that setting
-                return state.Debug.Value ? _debugFiles[name] : _bundleCache.GetContent(name);
+                return state.Debug.Value ? _debugFiles[key] : _bundleCache.GetContent(key);
             }
-            return DebugStatusReader.IsDebuggingEnabled() ? _debugFiles[name] : _bundleCache.GetContent(name);
+            return DebugStatusReader.IsDebuggingEnabled() ? _debugFiles[key] : _bundleCache.GetContent(key);
         }
 
         protected string Render(string key, string renderTo, IRenderer renderer)
